@@ -92,7 +92,9 @@ public class ExtensionLoader<T> {
      * cachedNames集合的反向关系缓存
      */
     private final Holder<Map<String, Class<?>>> cachedClasses = new Holder<>();
-
+    /**
+     * key 为扩展名,Value 为 @Activate 注解
+     */
     private final Map<String, Object> cachedActivates = new ConcurrentHashMap<>();
     /**
      * 缓存了该ExtensionLoader加载的扩展名和扩展实现对象之间的映射关系
@@ -264,11 +266,15 @@ public class ExtensionLoader<T> {
      */
     public List<T> getActivateExtension(URL url, String[] values, String group) {
         List<T> activateExtensions = new ArrayList<>();
+        // values 配置就是扩展名
         List<String> names = values == null ? new ArrayList<>(0) : asList(values);
         if (!names.contains(REMOVE_VALUE_PREFIX + DEFAULT_KEY)) {
+            // 触发 cachedActivates 等缓存字段的加载
             getExtensionClasses();
             for (Map.Entry<String, Object> entry : cachedActivates.entrySet()) {
+                // 扩展名
                 String name = entry.getKey();
+                // @Activate 注解
                 Object activate = entry.getValue();
 
                 String[] activateGroup, activateValue;
@@ -282,22 +288,29 @@ public class ExtensionLoader<T> {
                 } else {
                     continue;
                 }
-                if (isMatchGroup(group, activateGroup)
+                if (isMatchGroup(group, activateGroup)// 匹配 group
+                        // 没有出现在 values 配置中的,机尾默认激活的扩展试下
                         && !names.contains(name)
+                        // 通过 "-" 明确指定不激活该扩展实现
                         && !names.contains(REMOVE_VALUE_PREFIX + name)
+                        // 检测 URL 中是否出现了指定key
                         && isActive(activateValue, url)) {
+                    // 加载扩展实现的实例对象,这些都是激活的
                     activateExtensions.add(getExtension(name));
                 }
             }
+            // 排序
             activateExtensions.sort(ActivateComparator.COMPARATOR);
         }
         List<T> loadedExtensions = new ArrayList<>();
         for (int i = 0; i < names.size(); i++) {
             String name = names.get(i);
+            // 通过 "-" 开头的配置明确指定不激活的扩展实现,直接就忽略了
             if (!name.startsWith(REMOVE_VALUE_PREFIX)
                     && !names.contains(REMOVE_VALUE_PREFIX + name)) {
                 if (DEFAULT_KEY.equals(name)) {
                     if (!loadedExtensions.isEmpty()) {
+                        // 按照顺序,将自定义的扩展添加到默认扩展集合前面
                         activateExtensions.addAll(0, loadedExtensions);
                         loadedExtensions.clear();
                     }
@@ -307,6 +320,7 @@ public class ExtensionLoader<T> {
             }
         }
         if (!loadedExtensions.isEmpty()) {
+            // 按照顺序,将自定义的扩展添加到默认扩展集合后面
             activateExtensions.addAll(loadedExtensions);
         }
         return activateExtensions;
@@ -958,6 +972,7 @@ public class ExtensionLoader<T> {
             // 切分name
             String[] names = NAME_SEPARATOR.split(name);
             if (ArrayUtils.isNotEmpty(names)) {
+                // 将包含 @Activate 注解的实现类缓存到 cachedActivates 集合中
                 cacheActivateClass(clazz, names[0]);
                 for (String n : names) {
                     cacheName(clazz, n);
@@ -1041,6 +1056,7 @@ public class ExtensionLoader<T> {
      */
     private boolean isWrapperClass(Class<?> clazz) {
         try {
+            // 构造函数只有一个参数且为扩展接口类型
             clazz.getConstructor(type);
             return true;
         } catch (NoSuchMethodException e) {
@@ -1077,6 +1093,7 @@ public class ExtensionLoader<T> {
      * 在获取实现类的过程中,如果某个实现类被Adaptive注解修饰了,那么该类就会被赋值给cachedAdaptiveClass变量
      * 此时,直接返回cachedAdaptiveClass即可.如果所有的实现类均未被Adaptive注解修饰,那么执行第三步逻辑,创建
      * 自适应扩展类
+     *
      * @return
      */
     private Class<?> getAdaptiveExtensionClass() {

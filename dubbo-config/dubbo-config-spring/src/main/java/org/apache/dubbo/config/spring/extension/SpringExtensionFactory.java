@@ -65,6 +65,7 @@ public class SpringExtensionFactory implements ExtensionFactory {
             return null;
         }
 
+        // 从 Spring 容器中查找 Bean
         for (ApplicationContext context : CONTEXTS) {
             T bean = BeanFactoryUtils.getOptionalBean(context, name, type);
             if (bean != null) {

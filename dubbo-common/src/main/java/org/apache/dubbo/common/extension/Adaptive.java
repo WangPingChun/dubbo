@@ -18,14 +18,13 @@ package org.apache.dubbo.common.extension;
 
 import org.apache.dubbo.common.URL;
 
-import java.lang.annotation.Documented;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import java.lang.annotation.*;
 
 /**
  * Provide helpful information for {@link ExtensionLoader} to inject dependency extension instance.
+ * 可以用在类或方法上.
+ * 当注解在类上时,Dubbo不会为该类生成代理类
+ * 当注解在方法(接口方法)上时,Dubbo则会为该方法生成代理逻辑
  *
  * @see ExtensionLoader
  * @see URL

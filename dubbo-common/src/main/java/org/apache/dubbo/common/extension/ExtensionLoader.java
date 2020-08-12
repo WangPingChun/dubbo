@@ -581,6 +581,7 @@ public class ExtensionLoader<T> {
 
     @SuppressWarnings("unchecked")
     public T getAdaptiveExtension() {
+        // 从缓存中获取自适应扩展
         Object instance = cachedAdaptiveInstance.get();
         if (instance == null) {
             if (createAdaptiveInstanceError != null) {
@@ -593,6 +594,7 @@ public class ExtensionLoader<T> {
                 instance = cachedAdaptiveInstance.get();
                 if (instance == null) {
                     try {
+                        // 创建自适应扩展
                         instance = createAdaptiveExtension();
                         cachedAdaptiveInstance.set(instance);
                     } catch (Throwable t) {
@@ -1063,24 +1065,38 @@ public class ExtensionLoader<T> {
     @SuppressWarnings("unchecked")
     private T createAdaptiveExtension() {
         try {
+            // 获取自适应扩展类,并通过反射实例化
             return injectExtension((T) getAdaptiveExtensionClass().newInstance());
         } catch (Exception e) {
             throw new IllegalStateException("Can't create adaptive extension " + type + ", cause: " + e.getMessage(), e);
         }
     }
 
+    /**
+     * 比如该方法可以获取Protocol接口的DubboProtocol,HttpProtocol,InjvmProtocol等实现类
+     * 在获取实现类的过程中,如果某个实现类被Adaptive注解修饰了,那么该类就会被赋值给cachedAdaptiveClass变量
+     * 此时,直接返回cachedAdaptiveClass即可.如果所有的实现类均未被Adaptive注解修饰,那么执行第三步逻辑,创建
+     * 自适应扩展类
+     * @return
+     */
     private Class<?> getAdaptiveExtensionClass() {
+        // 通过SPI获取所有的扩展类
         getExtensionClasses();
+        // 检查缓存
         if (cachedAdaptiveClass != null) {
             return cachedAdaptiveClass;
         }
+        // 创建自适应扩展类
         return cachedAdaptiveClass = createAdaptiveExtensionClass();
     }
 
     private Class<?> createAdaptiveExtensionClass() {
+        // 构建自适应扩展代码
         String code = new AdaptiveClassCodeGenerator(type, cachedDefaultName).generate();
         ClassLoader classLoader = findClassLoader();
+        // 获取编译器实现类
         org.apache.dubbo.common.compiler.Compiler compiler = ExtensionLoader.getExtensionLoader(org.apache.dubbo.common.compiler.Compiler.class).getAdaptiveExtension();
+        // 编译代码,生成 Class
         return compiler.compile(code, classLoader);
     }
 
